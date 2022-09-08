@@ -1,81 +1,100 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+  </head>
 
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Document</title>
-</head>
+  <body>
+    <canvas id="canvas" style="border: solid 3px red"></canvas>
+    <canvas id="canvas2" style="border: solid 3px red"></canvas>
+    <br />
+  </body>
 
-<body>
-  <canvas id="canvas" style="border: solid 3px red"></canvas>
-  <canvas id="canvas2" style="border: solid 3px red"></canvas>
-  <br />
-</body>
-
-<script>
-  const canvas = document.querySelector('#canvas');
-  const canvas2 = document.querySelector('#canvas2');
-  const myImg = new Image();
-  myImg.src = './mon.jpg';
-  myImg.onload = async () => {
-    canvas.height = myImg.height;
-    canvas2.height = myImg.height;
-    canvas.width = myImg.width;
-    canvas2.width = myImg.width;
-    const context = canvas.getContext('2d');
-    context.drawImage(myImg, 0, 0);
-    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-    let row = 0;
-    let column = 0;
-    const coords = [];
-    for (var i = 0, n = data.length; i < n; i += 4) {
-      const r = data[i];
-      const g = data[i + 1];
-      const b = data[i + 2];
-      const a = data[i + 3];
-      const add = r + g + b;
-      if (add < 250 && a !== 0) {
-        coords.push({ x: column, y: row });
-      }
-      if (column !== 0 && column % canvas.width === 0) {
-        row++;
-        column = 0;
-      }
-      column++;
-    }
-
-    var ctx = canvas2.getContext("2d");
-
-    const sortedCoords = coords.sort((a, b) => {
-      if (a.x < b.x) {
-        return -1;
-      }
-      if (a.x > b.x) {
-        return 1;
-      }
-      return 0;
-    });
-
-    ctx.beginPath();
-
-    ctx.moveTo(sortedCoords[0].x, sortedCoords[0].y);
-
-    sortedCoords.forEach((coord, index) => {
-      ctx.lineTo(coord.x, coord.y);
-
-      if (coords[index + 1] && coords[index + 1].x) {
-        const nextY = coords[index + 1].y;
-        if (nextY !== coord.y + 1 && nextY !== coord.y - 1) {
-          ctx.moveTo(coords[index + 1].x, coords[index + 1].y);
+  <script>
+    const canvas = document.querySelector('#canvas');
+    const canvas2 = document.querySelector('#canvas2');
+    const myImg = new Image();
+    myImg.src = './sig.png';
+    myImg.onload = async () => {
+      canvas.height = myImg.height;
+      canvas2.height = myImg.height;
+      canvas.width = myImg.width;
+      canvas2.width = myImg.width;
+      const context = canvas.getContext('2d');
+      context.drawImage(myImg, 0, 0);
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      let row = 0;
+      let column = 0;
+      const coords = [];
+      for (var i = 0, n = data.length; i < n; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+        const add = r + g + b;
+        if (add < 250 && a !== 0) {
+          coords.push({ x: column, y: row });
         }
+        if (column !== 0 && column % canvas.width === 0) {
+          row++;
+          column = 0;
+        }
+        column++;
       }
-    });
 
-    ctx.stroke();
-    ctx.closePath();
-  };
-</script>
+      var ctx = canvas2.getContext('2d');
 
+      const sortedCoords = coords.sort((a, b) => {
+        if (a.x < b.x) {
+          return -1;
+        }
+        if (a.x > b.x) {
+          return 1;
+        }
+        return 0;
+      });
+      download(JSON.stringify(sortedCoords), 'data.json', 'json');
+      ctx.beginPath();
+
+      ctx.moveTo(sortedCoords[0].x, sortedCoords[0].y);
+
+      sortedCoords.forEach((coord, index) => {
+        ctx.lineTo(coord.x, coord.y);
+
+        if (coords[index + 1] && coords[index + 1].x) {
+          const nextY = coords[index + 1].y;
+          if (nextY !== coord.y + 1 && nextY !== coord.y - 1) {
+            ctx.moveTo(coords[index + 1].x, coords[index + 1].y);
+          }
+        }
+      });
+
+      ctx.stroke();
+      ctx.closePath();
+    };
+
+    // Function to download data to a file
+    function download(data, filename, type) {
+      var file = new Blob([data], { type: type });
+      if (window.navigator.msSaveOrOpenBlob)
+        // IE10+
+        window.navigator.msSaveOrOpenBlob(file, filename);
+      else {
+        // Others
+        var a = document.createElement('a'),
+          url = URL.createObjectURL(file);
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        }, 0);
+      }
+    }
+  </script>
 </html>
