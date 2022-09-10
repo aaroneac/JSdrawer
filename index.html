@@ -1,100 +1,196 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-  </head>
 
-  <body>
-    <canvas id="canvas" style="border: solid 3px red"></canvas>
-    <canvas id="canvas2" style="border: solid 3px red"></canvas>
-    <br />
-  </body>
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Document</title>
+</head>
 
-  <script>
-    const canvas = document.querySelector('#canvas');
-    const canvas2 = document.querySelector('#canvas2');
-    const myImg = new Image();
-    myImg.src = './sig.png';
-    myImg.onload = async () => {
-      canvas.height = myImg.height;
-      canvas2.height = myImg.height;
-      canvas.width = myImg.width;
-      canvas2.width = myImg.width;
-      const context = canvas.getContext('2d');
-      context.drawImage(myImg, 0, 0);
-      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-      let row = 0;
-      let column = 0;
-      const coords = [];
-      for (var i = 0, n = data.length; i < n; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const a = data[i + 3];
-        const add = r + g + b;
-        if (add < 250 && a !== 0) {
-          coords.push({ x: column, y: row });
-        }
-        if (column !== 0 && column % canvas.width === 0) {
-          row++;
-          column = 0;
-        }
-        column++;
+<body>
+  <canvas id="canvas" style="border: solid 3px red"></canvas>
+  <canvas id="canvas2" style="border: solid 3px red"></canvas>
+  <br />
+</body>
+
+<script>
+  const canvas = document.querySelector('#canvas');
+  const canvas2 = document.querySelector('#canvas2');
+  const myImg = new Image();
+  myImg.src = './sig.png';
+  myImg.onload = async () => {
+    canvas.height = myImg.height;
+    canvas2.height = myImg.height;
+    canvas.width = myImg.width;
+    canvas2.width = myImg.width;
+    const context = canvas.getContext('2d');
+    context.drawImage(myImg, 0, 0);
+    context.imageSmoothingEnabled = false;
+    const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+    let row = 0;
+    let column = 0;
+    const coords = [];
+    for (var i = 0, n = data.length; i < n; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const a = data[i + 3];
+      const add = r + g + b;
+      if (add < 950 && a !== 0) {
+        coords.push({ x: column, y: row });
       }
+      if (column !== 0 && column % canvas.width === 0) {
+        row++;
+        column = 0;
+      }
+      column++;
+    }
 
-      var ctx = canvas2.getContext('2d');
+    var ctx = canvas2.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(0.5, 0.5);
+    const sortedCoords = coords.sort((a, b) => {
+      if (a.x < b.x) {
+        return -1;
+      }
+      if (a.x > b.x) {
+        return 1;
+      }
+      return 0;
+    });
 
-      const sortedCoords = coords.sort((a, b) => {
-        if (a.x < b.x) {
-          return -1;
+
+
+    const realSort = sortTouchingCoords(coords);
+
+    // download(JSON.stringify(sortedCoords), 'data.json', 'json');
+    ctx.beginPath();
+    ctx.strokeStyle = 'blue';
+
+    ctx.moveTo(sortedCoords[0].x, sortedCoords[0].y);
+
+    let penPickUps = 0;
+
+    realSort.forEach((coord, index) => {
+      ctx.lineTo(coord.x, coord.y);
+
+      if (realSort[index + 1] && realSort[index + 1].x) {
+        const nextY = realSort[index + 1].y;
+        const nextX = realSort[index + 1].x;
+        // if ((nextY !== coord.y + 1 && nextY !== coord.y - 1) && (nextX !== coord.x + 1 && nextX !== coord.x - 1)) {
+        //   //currently getting 1803
+        //reduced it down to 868
+        //   penPickUps++;
+        //   ctx.moveTo(coords[index + 1].x, coords[index + 1].y);
+        // }
+
+        //how to know when to pick pen up
+        // if next x or y is greater than +- 1 away
+
+        if (Math.abs(nextX - coord.x) > 1 || Math.abs(nextY - coord.y) > 1) {
+          penPickUps++;
+          ctx.moveTo(realSort[index + 1].x, realSort[index + 1].y);
         }
-        if (a.x > b.x) {
-          return 1;
-        }
-        return 0;
-      });
-      download(JSON.stringify(sortedCoords), 'data.json', 'json');
-      ctx.beginPath();
+        // else if
+        //   ((nextY === coord.y && (coord.x === nextX - 1 || coord.x === nextX + 1))) {
+        //   penPickUps++;
+        //   ctx.moveTo(coord.x, coord.y);
+        // } else if (nextX === coord.x && (coord.y === nextY - 1 || coord.y === nextY + 1)) {
+        //   penPickUps++;
+        //   ctx.moveTo(coord.x, coord.y);
+        // }
+      }
+    });
 
-      ctx.moveTo(sortedCoords[0].x, sortedCoords[0].y);
+    ctx.stroke();
+    ctx.closePath();
+    console.log(penPickUps);
+  };
 
-      sortedCoords.forEach((coord, index) => {
-        ctx.lineTo(coord.x, coord.y);
+  function sortTouchingCoords(array) {
+    const sortedArray = [];
+    const splicedArray = [...array];
 
-        if (coords[index + 1] && coords[index + 1].x) {
-          const nextY = coords[index + 1].y;
-          if (nextY !== coord.y + 1 && nextY !== coord.y - 1) {
-            ctx.moveTo(coords[index + 1].x, coords[index + 1].y);
+    for (let i = 0; i < array.length; i++) {
+      if (!sortedArray.length) {
+        const slice = splicedArray.splice(0, 1);
+        sortedArray.push(slice[0]);
+      } else {
+        const lastItem = sortedArray[sortedArray.length - 1];
+
+        const index = splicedArray.findIndex(el => {
+          if (el.x === lastItem.x && (el.y === lastItem.y - 1 || el.y === lastItem.y + 1)) {
+            return el;
+          } else if (el.y === lastItem.y && (el.x === lastItem.x - 1 || el.x === lastItem.x + 1)) {
+            return el;
           }
+        });
+
+        if (index > -1) {
+          const slice = splicedArray.splice(index, 1);
+          sortedArray.push(slice[0]);
+
+        } else {
+          const slice = splicedArray.splice(0, 1);
+          sortedArray.push(slice[0]);
         }
-      });
-
-      ctx.stroke();
-      ctx.closePath();
-    };
-
-    // Function to download data to a file
-    function download(data, filename, type) {
-      var file = new Blob([data], { type: type });
-      if (window.navigator.msSaveOrOpenBlob)
-        // IE10+
-        window.navigator.msSaveOrOpenBlob(file, filename);
-      else {
-        // Others
-        var a = document.createElement('a'),
-          url = URL.createObjectURL(file);
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(function () {
-          document.body.removeChild(a);
-          window.URL.revokeObjectURL(url);
-        }, 0);
       }
     }
-  </script>
+    return sortedArray;
+  }
+  //might not need this stray pixels might actually just be the drawing getting anti aliased?? but idk
+  // function isStrayPixel(coords, array) {
+  //   //if two pixels touch it, it is not a stray pixel
+  //   let pixelTouchCount = 0;
+  //   const copy = [...array];
+
+  //   for (let i = 0; i < 2; i++) {
+  //     const find = copy.findIndex(el => {
+  //       if (el.x === coords.x && (el.y === coords.y - 1 || el.y === coords.y + 1)) {
+  //         return el;
+  //       } else if (el.y === coords.y && (el.x === coords.x - 1 || el.x === coords.x + 1)) {
+  //         return el;
+  //       }
+  //     });
+  //     if (coords.x === 138) {
+  //       console.log(coords.x);
+  //       console.log(coords.y);
+  //     }
+  //     if (find > -1) {
+  //       pixelTouchCount++;
+  //       const slice = copy.splice(find, 1);
+  //     } else {
+  //       break;
+  //     }
+  //   }
+  //   if (coords.x === 138 && coords.y == 263) {
+  //     console.log(pixelTouchCount);
+  //   }
+  //   if (pixelTouchCount < 2) return true;
+  //   else return false;
+  // }
+
+  // Function to download data to a file
+  function download(data, filename, type) {
+    var file = new Blob([data], { type: type });
+    if (window.navigator.msSaveOrOpenBlob)
+      // IE10+
+      window.navigator.msSaveOrOpenBlob(file, filename);
+    else {
+      // Others
+      var a = document.createElement('a'),
+        url = URL.createObjectURL(file);
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () {
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }, 0);
+    }
+  }
+</script>
+
 </html>
